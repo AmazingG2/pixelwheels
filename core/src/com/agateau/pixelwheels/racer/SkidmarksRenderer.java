@@ -41,7 +41,7 @@ public class SkidmarksRenderer {
         mAssets = assets;
     }
 
-    public void draw(Batch batch, CircularArray<Wheel.Skidmark> skidmarks, Rectangle viewBounds) {
+    /*public void draw(Batch batch, CircularArray<Wheel.Skidmark> skidmarks, Rectangle viewBounds) {
         int idx = skidmarks.getBeginIndex();
         if (idx == skidmarks.getEndIndex()) {
             return;
@@ -83,6 +83,70 @@ public class SkidmarksRenderer {
                     alpha * mark1.getOpacity(),
                     (alpha + SKIDMARK_ALPHA_INC) * mark2.getOpacity());
             alpha = Math.min(SKIDMARK_ALPHA_MAX, alpha + SKIDMARK_ALPHA_INC);
+        }
+    }*/
+
+    public void draw (Batch batch, CircularArray<Wheel.Skidmark> skidmarks, Rectangle viewBounds) {
+        int idx = skidmarks.getBeginIndex();
+
+        // If the skidmarks array is empty, return immediately
+        if (idx == skidmarks.getEndIndex()) {
+            return;
+        }
+
+        // Initialize the first skidmark
+        Wheel.Skidmark previousMark = skidmarks.get(idx);
+        idx = skidmarks.getNextIndex(idx);
+        float alpha = SKIDMARK_ALPHA_MIN;
+
+        // Loop through all skidmarks and draw them
+        while (idx != skidmarks.getEndIndex()) {
+            Wheel.Skidmark currentMark = skidmarks.get(idx);
+            idx = skidmarks.getNextIndex(idx);
+
+            // Skip drawing if the skidmark is an end indicator or both skidmarks are finished
+            if (currentMark.isEndIndicator() || previousMark.isEndIndicator() || (currentMark.isFinished() && previousMark.isFinished())) {
+                alpha = SKIDMARK_ALPHA_MIN;
+                continue;
+            }
+
+            // Skip drawing if skidmarks are not within the view bounds
+            if (!isMarkWithinViewBounds(currentMark, previousMark, viewBounds)) {
+                continue;
+            }
+
+            // Compute thickness for skidmarks if not already done
+            if (!currentMark.hasThickness()) {
+                computeAndSetThickness(currentMark, previousMark);
+            }
+
+            // Draw the skidmark
+            drawSkidmark(batch, previousMark, currentMark, alpha * previousMark.getOpacity(), (alpha + SKIDMARK_ALPHA_INC) * currentMark.getOpacity());
+            alpha = Math.min(SKIDMARK_ALPHA_MAX, alpha + SKIDMARK_ALPHA_INC);
+
+            // Update previousMark for the next iteration
+            previousMark = currentMark;
+        }
+    }
+
+    // Helper method to check if a skidmark is within the view bounds
+    private boolean isMarkWithinViewBounds(Wheel.Skidmark currentMark, Wheel.Skidmark previousMark, Rectangle viewBounds) {
+        Vector2 pos1 = previousMark.getPos();
+        Vector2 pos2 = currentMark.getPos();
+
+        return viewBounds.contains(pos1) || viewBounds.contains(pos2);
+    }
+
+    // Helper method to compute and set thickness for skidmarks
+    private void computeAndSetThickness(Wheel.Skidmark currentMark, Wheel.Skidmark previousMark) {
+        Vector2 pos1 = previousMark.getPos();
+        Vector2 pos2 = currentMark.getPos();
+        Vector2 thickness = AgcMathUtils.computeWidthVector(pos1, pos2, SKIDMARK_WIDTH / 2);
+
+        currentMark.setThickness(thickness);
+
+        if (!previousMark.hasThickness()) {
+            previousMark.setThickness(thickness);
         }
     }
 
