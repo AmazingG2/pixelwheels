@@ -124,10 +124,13 @@ public class Vehicle implements Racer.Component, Disposable {
 
     private void moveCenterOfGravity(
             VehicleDef vehicleDef, TextureRegionProvider textureRegionProvider) {
+        final float SHIFT_PERCENT = 0.5f;
+        final float UNIT_FOR_PIXEL = Constants.UNIT_FOR_PIXEL;
+
         float halfVehicleLength = vehicleDef.getImage(textureRegionProvider).getRegionHeight() / 2f;
         MassData massData = mBody.getMassData();
         massData.center.x +=
-                CENTER_OF_GRAVITY_SHIFT_PERCENT * halfVehicleLength * Constants.UNIT_FOR_PIXEL;
+                SHIFT_PERCENT * halfVehicleLength * UNIT_FOR_PIXEL;
         mBody.setMassData(massData);
     }
 

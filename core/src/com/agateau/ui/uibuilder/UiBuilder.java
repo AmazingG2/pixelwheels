@@ -137,7 +137,7 @@ public class UiBuilder {
         initMenuItemFactories();
     }
 
-    private void initActorFactories() {
+    /*private void initActorFactories() {
         mActorFactories.put(
                 "Image",
                 (uiBuilder, element) -> {
@@ -279,6 +279,207 @@ public class UiBuilder {
                     Menu menu = createMenu(element);
                     return new MenuScrollPane(menu);
                 });
+        mActorFactories.put("Table", (uiBuilder, element) -> new Table(mSkin));
+    }*/
+
+    private void initActorFactories() {
+        registerImageActorFactory();
+        registerAnimatedImageActorFactory();
+        registerImageButtonActorFactory();
+        registerTextButtonActorFactory();
+        registerGroupActorFactory();
+        registerAnchorGroupActorFactory();
+        registerLabelActorFactory();
+        registerScrollPaneActorFactory();
+        registerVerticalGroupActorFactory();
+        registerHorizontalGroupActorFactory();
+        registerCheckBoxActorFactory();
+        registerMenuActorFactory();
+        registerMenuScrollPaneActorFactory();
+        registerTableActorFactory();
+    }
+
+    private void registerImageActorFactory() {
+        mActorFactories.put(
+                "Image",
+                (uiBuilder, element) -> {
+                    TextureAtlas atlas = getAtlasForElement(element);
+                    String name = element.getAttribute("name", "");
+                    boolean tiled = element.getBooleanAttribute("tiled", false);
+                    if (tiled) {
+                        AgcTiledImage image = new AgcTiledImage();
+                        TextureRegion region = atlas.findRegion(name);
+                        image.setRegion(region);
+                        return image;
+                    } else {
+                        Image image = new Image();
+                        if (!name.isEmpty()) {
+                            if (name.endsWith(".9")) {
+                                initImageFromNinePatchName(image, atlas, name);
+                            } else {
+                                initImageFromRegionName(image, atlas, name);
+                            }
+                            image.pack();
+                        }
+                        return image;
+                    }
+                });
+    }
+
+    private void registerAnimatedImageActorFactory() {
+        mActorFactories.put(
+                "AnimatedImage",
+                (uiBuilder, element) -> {
+                    String name = element.getAttribute("name", null);
+                    if (name == null) {
+                        throw new UiBuilder.SyntaxException("Missing 'name' attribute");
+                    }
+                    float frameDuration = element.getFloatAttribute("frameDuration", 0.1f);
+                    float startTime = element.getFloatAttribute("startTime", 0f);
+
+                    TextureAtlas atlas = getAtlasForElement(element);
+                    Animation<TextureRegion> anim =
+                            new Animation<>(frameDuration, atlas.findRegions(name));
+                    AnimatedImage image = new AnimatedImage(anim);
+                    image.setStartTime(startTime);
+                    return image;
+                });
+    }
+
+    private void registerImageButtonActorFactory() {
+        mActorFactories.put(
+                "ImageButton",
+                (uiBuilder, element) -> {
+                    String styleName = element.getAttribute("style", "default");
+                    ImageButton.ImageButtonStyle style =
+                            new ImageButton.ImageButtonStyle(
+                                    mSkin.get(styleName, ImageButton.ImageButtonStyle.class));
+                    String imageName = element.getAttribute("imageName", "");
+                    if (!imageName.isEmpty()) {
+                        style.imageUp = mSkin.getDrawable(imageName);
+                    }
+                    ImageButton button = new ImageButton(style);
+                    String imageColor = element.getAttribute("imageColor", "");
+                    if (!imageColor.isEmpty()) {
+                        Color color = Color.valueOf(imageColor);
+                        button.getImage().setColor(color);
+                    }
+                    return button;
+                });
+    }
+
+    private void registerTextButtonActorFactory() {
+        mActorFactories.put(
+                "TextButton",
+                (uiBuilder, element) -> {
+                    String styleName = element.getAttribute("style", "default");
+                    String text = tr(processText(element.getText()));
+                    return new TextButton(text, mSkin, styleName);
+                });
+    }
+
+    private void registerGroupActorFactory() {
+        mActorFactories.put("Group", (uiBuilder, element) -> new Group());
+    }
+
+    private void registerAnchorGroupActorFactory() {
+        mActorFactories.put(
+                "AnchorGroup",
+                (uiBuilder, element) -> {
+                    mDimParser.gridSize = mDimParser.parse(element.getAttribute("gridSize", "1"));
+                    AnchorGroup group = new AnchorGroup();
+                    group.setGridSize(mDimParser.gridSize);
+                    return group;
+                });
+    }
+
+    private void registerLabelActorFactory() {
+        mActorFactories.put(
+                "Label",
+                (uiBuilder, element) -> {
+                    String styleName = element.getAttribute("style", "default");
+                    String text = tr(processText(element.getText()));
+                    Label label = new Label(text, mSkin, styleName);
+                    int align = parseAlign(element);
+                    if (align != -1) {
+                        label.setAlignment(align);
+                    }
+                    if (element.getBooleanAttribute("wrap", false)) {
+                        label.setWrap(true);
+                    }
+                    return label;
+                });
+    }
+
+    private void registerScrollPaneActorFactory() {
+        mActorFactories.put(
+                "ScrollPane",
+                (uiBuilder, element) -> {
+                    String styleName = element.getAttribute("style", "");
+                    ScrollPane pane;
+                    if (styleName.isEmpty()) {
+                        pane = new ScrollPane(null);
+                    } else {
+                        pane = new ScrollPane(null, mSkin, styleName);
+                    }
+                    Actor child = buildChildren(element, null);
+                    if (child != null) {
+                        pane.setActor(child);
+                    }
+                    return pane;
+                });
+    }
+
+    private void registerVerticalGroupActorFactory() {
+        mActorFactories.put(
+                "VerticalGroup",
+                (uiBuilder, element) -> {
+                    VerticalGroup group = new VerticalGroup();
+                    float spacing = mDimParser.parse(element.getAttribute("spacing", "0"));
+                    group.space(spacing);
+                    int align = parseAlign(element);
+                    if (align != -1) {
+                        group.align(align);
+                    }
+                    return group;
+                });
+    }
+
+    private void registerHorizontalGroupActorFactory() {
+        mActorFactories.put(
+                "HorizontalGroup",
+                (uiBuilder, element) -> {
+                    HorizontalGroup group = new HorizontalGroup();
+                    float spacing = mDimParser.parse(element.getAttribute("spacing", "0"));
+                    group.space(spacing);
+                    return group;
+                });
+    }
+
+    private void registerCheckBoxActorFactory() {
+        mActorFactories.put(
+                "CheckBox",
+                (uiBuilder, element) -> {
+                    String styleName = element.getAttribute("style", "default");
+                    String text = tr(element.getText());
+                    return new CheckBox(text, mSkin, styleName);
+                });
+    }
+
+    private void registerMenuActorFactory() {
+        mActorFactories.put("Menu", (uiBuilder, element) -> createMenu(element));
+    }
+
+    private void registerMenuScrollPaneActorFactory() {
+        mActorFactories.put(
+                "MenuScrollPane",
+                (uiBuilder, element) -> {
+                    Menu menu = createMenu(element);
+                    return new MenuScrollPane(menu);
+                });
+    }
+
+    private void registerTableActorFactory() {
         mActorFactories.put("Table", (uiBuilder, element) -> new Table(mSkin));
     }
 
